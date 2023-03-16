@@ -174,6 +174,10 @@ For pre-training we compile our model with PyTorch 2.0 using `model.compile=true
 
 We show that it is possible to successfully pre-train a "Large Language Model" (T5) under a limited budget (1xA100 GPU, ~20 hours) in PyTorch. We make our codebase, configs and training logs publicly available to enhance the accessibility of NLP research. We are keen to hear your suggestions to improve the codebase further.
 
+### Acknowledgements:
+
+Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
+
 ## References:
 - [T5 paper](https://arxiv.org/pdf/1910.10683.pdf)
 - [T5 v1.1 paper](https://arxiv.org/pdf/2002.05202.pdf)
