@@ -1,0 +1,59 @@
+defaults:
+  - _self_
+  - task: pt
+
+# Experiment args
+mode: 'pt'
+device: gpu
+eval_only: false
+predict_only: false
+seed: 2137
+
+model:
+  name: 'google/t5-v1_1-base'
+  checkpoint_path: ''
+  dropout: 0.0
+  random_init: true
+  compile: false # Pytorch 2.0
+
+data:
+  input_length: 512
+  mlm_probability: 0.15
+  mean_noise_span_length: 3.0
+  num_workers: 8
+
+optim:
+  name: adamwscale
+  base_lr: 2e-2
+  batch_size: 144
+  total_steps: 65536
+  epochs: -1 # If it's > 0 it overwrites total_steps
+  warmup_steps: 10000
+  lr_scheduler: cosine
+  weight_decay: 0.0
+  grad_clip: 1.0
+  grad_acc: 2
+  final_cosine: 1e-5
+
+eval:
+  every_steps: 100000 # Don't eval
+  steps: 500
+
+checkpoint:
+  every_steps: 30000
+
+logging:
+  neptune: false
+  neptune_creds:
+    project:
+    api_token:
+    tags:
+  every_steps: 100
+  grad_l2: true
+  weights_l2: true
+
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}

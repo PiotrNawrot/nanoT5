@@ -1,0 +1,31 @@
+# @package _global_
+
+mode: 'ft'
+
+data:
+  max_seq_len: 1024
+  max_target_len: 128
+  max_num_instances_per_task: 100
+  add_task_name: False
+  add_task_definition: True
+  num_pos_examples: 2
+  num_neg_examples: 0
+  add_explanation: False
+  tk_instruct: False
+  exec_file_path: ./nanoT5/utils/ni_dataset.py
+  data_dir: ./data/splits/default
+  task_dir: ./data/tasks
+
+optim:
+  name: adamw
+  base_lr: 5e-5
+  batch_size: 8
+  epochs: 2
+  warmup_steps: 0
+  lr_scheduler: constant
+  weight_decay: 0.0
+  grad_clip: 0.0
+  grad_acc: 1
+
+eval:
+  steps: 200
