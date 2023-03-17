@@ -108,7 +108,7 @@ python -m nanoT5.main \
     optim.lr_scheduler={legacy,cosine}
 ```
 
-We recommend adding `model.compile=true` flag for pre-training, if you are able to install PyTorch 2.0. In our case it effects in 1.33x speedup.
+We recommend adding `model.compile=true` flag for pre-training, if you are able to install PyTorch 2.0. In our case it results in ~1.33x speedup.
 
 Suppose you don't have access to a 80GB GPU. In that case, you can increase the number of gradient accumulation steps by `optim.grad_acc=steps`, In where `batch_size` has to be divisible by `steps`.
 
