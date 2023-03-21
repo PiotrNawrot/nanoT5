@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/611282680.svg)](https://zenodo.org/badge/latestdoi/611282680)
+
 # nanoT5 (Encoder-Decoder / Pre-training + Fine-Tuning)
 
 ![nanoT5](assets/nanoT5.png)
