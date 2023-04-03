@@ -137,7 +137,7 @@ git clone https://github.com/allenai/natural-instructions.git data
 We strictly follow the fine-tuning [config](nanoT5/configs/task/ft.yaml) of Tk-Instruct. It remains unclear whether Tk-Instruct was initialised from a regular checkpoint (*google/t5-v1_1-base*) or the one adapted explicitly for Language Modelling with continued training (*google/t5-base-lm-adapt*). Therefore, we decided to evaluate both. Run the following command to reproduce the Tk-Instruct experiments:
 
 ```
-python -m adaptive.moe task=ft \
+python -m nanoT5.main task=ft \
     model.name={google/t5-v1_1-base,google/t5-base-lm-adapt} \
     model.random_init={true,false} \
     model.checkpoint_path={"","/path/to/pytorch_model.bin"}
