@@ -183,6 +183,9 @@ def train(model, train_dataloader, test_dataloader, accelerator, lr_scheduler,
         if isinstance(train_dataloader.dataset, IterableDataset):
             train_dataloader.dataset.set_epoch(args.current_epoch)
 
+        # In case there is a remainder from previous epoch, we need to reset the optimizer
+        optimizer.zero_grad(set_to_none=True)
+
         for batch_id, batch in enumerate(train_dataloader, start=1):
             if args.current_train_step > args.optim.total_steps:
                 break
