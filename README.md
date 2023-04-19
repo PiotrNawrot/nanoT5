@@ -120,6 +120,8 @@ The summary of the optimization process is printed every 100 steps in the follow
 [train] Step 100 out of 65536 | Loss --> 59.881 | Grad_l2 --> 61.126 | Weights_l2 --> 7042.931 | Lr --> 0.010 | Seconds_per_step --> 1.385 |
 ```
 
+Finally, you can downlaod the weights after our pre-training directly from [HuggingFace Hub](https://huggingface.co/pnawrot/nanoT5-base) and fine-tune it in nanoT5 on SNI.
+
 ### Fine-tuning:
 
 To fine-tune our model, we use the popular meta-dataset called **Super Natural-Instructions (SNI)**, which aggregates datasets for many tasks. This meta-datasets was used to fine-tune many of the recent LLMs, e.g. [FlanT5](https://arxiv.org/pdf/2210.11416.pdf), [BLOOM](https://arxiv.org/pdf/2211.05100.pdf), and [Tk-Instruct](https://arxiv.org/pdf/2204.07705.pdf). While FlanT5 and BLOOM use other corpora in addition to SNI, Tk-Instruct's pipeline consists of starting from a pre-trained T5 model and fine-tuning it solely on SNI. 
