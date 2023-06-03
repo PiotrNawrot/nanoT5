@@ -15,8 +15,6 @@ from transformers.models.t5.modeling_t5 import (
     T5DenseGatedActDense,
 )
 
-from .pooling import Pooler, BoundaryPredictor
-
 # Flash Attention
 from einops import rearrange
 from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func

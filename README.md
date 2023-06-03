@@ -48,7 +48,8 @@ git clone https://github.com/PiotrNawrot/nanoT5.git
 cd nanoT5
 conda create -n nanoT5 python=3.8
 conda activate nanoT5
-pip3 install numpy --pre torch torchvision torchaudio --force-reinstall --index-url https://download.pytorch.org/whl/nightly/cu117
+pip3 install torch torchvision torchaudio # installs torch 2.0.1, CUDA 11.7
+# I installed flash attention from the source, probably can be done just by putting it in requirements.txt
 pip install -r requirements.txt
 ```
 

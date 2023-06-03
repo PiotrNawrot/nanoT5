@@ -15,7 +15,7 @@ from .copied_utils import (
     tokenize_function,
     DataCollatorForNI,
 )
-from .t5 import MyT5
+from .t5_model import MyT5
 
 
 def get_model(args, config):
@@ -45,7 +45,17 @@ def get_config(args):
     config = AutoConfig.from_pretrained(
         args.model.name,
     )
-    config.dropout_rate = args.model.dropout
+
+    if hasattr(args.model, 'overwrite'):
+        for k, v in args.model.overwrite.items():
+            assert hasattr(config, k), f'config does not have attribute {k}'
+            setattr(config, k, v)
+
+    if hasattr(args.model, 'add_config'):
+        for k, v in args.model.add_config.items():
+            assert not hasattr(config, k), f'config already has attribute {k}'
+            setattr(config, k, v)
+
     return config
 
 
