@@ -15,24 +15,29 @@ from .copied_utils import (
     tokenize_function,
     DataCollatorForNI,
 )
+from .t5 import MyT5
 
 
 def get_model(args, config):
+    klass = {
+        't5': T5ForConditionalGeneration,
+        'my_t5': MyT5,
+    }[args.model.klass]
+
     if args.model.checkpoint_path:
-        model = T5ForConditionalGeneration(
-            config,
-        )
+        model = klass(config)
         model.load_state_dict(torch.load(args.model.checkpoint_path))
     elif args.model.random_init:
-        model = T5ForConditionalGeneration(
-            config,
-        )
+        model = klass(config)
     else:
-        model = T5ForConditionalGeneration.from_pretrained(
+        model = klass.from_pretrained(
             args.model.name,
             config=config,
         )
 
+    with open_dict(args):
+        args.n_all_param = sum([p.nelement() for p in model.parameters()])
+    
     return model
 
 
