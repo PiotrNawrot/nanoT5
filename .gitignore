@@ -1,4 +1,5 @@
 data
+env
 env.yaml
 logs
 scripts
