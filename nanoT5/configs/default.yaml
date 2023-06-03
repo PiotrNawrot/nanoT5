@@ -5,6 +5,7 @@ defaults:
 # Experiment args
 mode: 'pt'
 device: gpu
+precision: 'no'
 eval_only: false
 predict_only: false
 seed: 2137

@@ -20,7 +20,10 @@ from .utils import (
 
 @hydra.main(config_path="configs", config_name="default", version_base='1.1')
 def main(args):
-    accelerator = Accelerator(cpu=args.device == "cpu")
+    accelerator = Accelerator(
+        cpu=args.device == "cpu",
+        mixed_precision=args.precision,
+    )
     logger = setup_basics(accelerator, args)
     config = get_config(args)
     model = get_model(args, config)
