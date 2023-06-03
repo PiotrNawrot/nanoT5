@@ -1,5 +1,6 @@
 defaults:
   - _self_
+  - model: hf
   - task: pt
 
 # Experiment args
@@ -12,8 +13,9 @@ seed: 2137
 
 model:
   name: 'google/t5-v1_1-base'
+  overwrite:
+    dropout_rate: 0.0
   checkpoint_path: ''
-  dropout: 0.0
   random_init: true
   compile: false # Pytorch 2.0
 

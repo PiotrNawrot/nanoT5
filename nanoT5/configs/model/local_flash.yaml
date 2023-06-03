@@ -3,4 +3,4 @@
 model:
   klass: local_t5
   add_config:
-    flash: False
+    flash: True

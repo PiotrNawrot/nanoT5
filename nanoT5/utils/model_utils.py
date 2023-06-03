@@ -20,8 +20,8 @@ from .t5_model import MyT5
 
 def get_model(args, config):
     klass = {
-        't5': T5ForConditionalGeneration,
-        'my_t5': MyT5,
+        'hf_t5': T5ForConditionalGeneration,
+        'local_t5': MyT5,
     }[args.model.klass]
 
     if args.model.checkpoint_path:

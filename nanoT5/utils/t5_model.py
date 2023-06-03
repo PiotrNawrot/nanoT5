@@ -18,41 +18,19 @@ from transformers.models.t5.modeling_t5 import (
 # Flash Attention
 from einops import rearrange
 from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
-from flash_attn.bert_padding import unpad_input, pad_input
 
 
 @dataclass
 class EncoderOutput(ModelOutput):
     hidden_states: torch.FloatTensor = None
     attention_mask: torch.FloatTensor = None
-    scores: torch.FloatTensor = None
 
 
 @dataclass
 class Seq2SeqLMOutput(ModelOutput):
     loss: torch.FloatTensor = None
-    boundary_loss: torch.FloatTensor = None
     logits: torch.FloatTensor = None
     encoder_outputs: EncoderOutput = None
-    extra_log: dict = None
-
-
-class PositionalEmbedding(nn.Module):
-    def __init__(self, config):
-        super(PositionalEmbedding, self).__init__()
-        inv_freq = 1 / (10000 ** (torch.arange(0.0, config.d_model, 2.0) / config.d_model))
-        self.register_buffer('inv_freq', inv_freq)
-
-        self.transform = T5DenseGatedActDense(config)
-
-    def forward(self, hidden):
-        B, L, D = hidden.size()
-
-        pos_seq = torch.arange(L, device=hidden.device, dtype=hidden.dtype)
-        sinusoid_inp = torch.ger(pos_seq, self.inv_freq)
-        pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
-        pos_emb = self.transform(pos_emb)
-        return hidden + pos_emb[None, :, :]
 
 
 class T5LayerFF(nn.Module):
@@ -442,51 +420,15 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
         self.embed_tokens = embed_tokens
         self.is_decoder = config.is_decoder
 
-        if self.config.absolute_position_embeddings:
-            self.positional_embeddings = PositionalEmbedding(config)
-        
         self.block = nn.ModuleList()
         for i in range(config.num_layers):
-            self.add_t5_block(i)
-            self.maybe_add_pooler(i)
+            self.block.append(
+                T5Block(self.config, has_relative_attention_bias=bool(i == 0))
+            )
 
         self.final_layer_norm = T5LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
 
-        self.active_layer_indices = []
-
-    def add_t5_block(self, i):
-        if self.config.share_positional_bias:    
-            self.block.append(
-                T5Block(self.config, has_relative_attention_bias=bool(i == 0))
-            )
-        elif self.config.cancel_bias:
-            self.block.append(
-                T5Block(self.config, has_relative_attention_bias=False)
-            )
-        else:
-            self.block.append(
-                T5Block(self.config, has_relative_attention_bias=True)
-            )
-    
-    def maybe_add_pooler(self, i):
-        cf = self.config.enc_pooler
-
-        if self.config.is_decoder or cf.type == 'none':
-            return
-
-        assert not (cf.layer_id > 0 and cf.every_n_layers > 0)
-
-        if cf.every_n_layers > 0 and i % cf.every_n_layers == cf.every_n_layers - 1:
-            self.block.append(
-                Pooler(general_config=self.config, **self.config.enc_pooler)
-            )
-
-        if cf.layer_id > 0 and cf.layer_id - 1 == i:
-            self.block.append(
-                Pooler(general_config=self.config, **self.config.enc_pooler)
-            )
-        
     def forward(
         self,
         input_ids=None,
@@ -498,8 +440,6 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
         batch_size, seq_length = input_shape
 
         inputs_embeds = self.embed_tokens(input_ids)
-        if self.config.absolute_position_embeddings:
-            inputs_embeds = self.positional_embeddings(inputs_embeds)
 
         # Masking
         if attention_mask is None:
@@ -528,45 +468,27 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
 
         position_bias = None
         encoder_decoder_position_bias = None
-        pooler_scores_acc = []
 
         hidden_states = self.dropout(inputs_embeds)
 
-        for i, layer_module in enumerate(self.block):
-            if len(self.active_layer_indices) > 0 and i not in self.active_layer_indices:
-                continue
+        for _, layer_module in enumerate(self.block):
+            layer_outputs = layer_module(
+                hidden_states,
+                attention_mask=extended_attention_mask,
+                position_bias=position_bias,
+                encoder_hidden_states=encoder_hidden_states,
+                encoder_attention_mask=encoder_extended_attention_mask,
+                encoder_decoder_position_bias=encoder_decoder_position_bias,
+                orig_mask=attention_mask if self.config.flash else None,
+            )
+            hidden_states = layer_outputs[0]
 
-            if isinstance(layer_module, Pooler):
-                hidden_states, attention_mask, scores = layer_module(
-                    hidden_states,
-                    attention_mask=extended_attention_mask,
-                )
-                pooler_scores_acc.append((i, scores))
-
-                # Correct the attention mask in case of pooler layers
-                extended_attention_mask = self.get_extended_attention_mask(
-                    attention_mask, 
-                    hidden_states.size()[:-1]
-                )
-            else:
-                layer_outputs = layer_module(
-                    hidden_states,
-                    attention_mask=extended_attention_mask,
-                    position_bias=position_bias,
-                    encoder_hidden_states=encoder_hidden_states,
-                    encoder_attention_mask=encoder_extended_attention_mask,
-                    encoder_decoder_position_bias=encoder_decoder_position_bias,
-                    orig_mask=attention_mask if self.config.flash else None,
-                )
-                hidden_states = layer_outputs[0]
-
-                if self.config.share_positional_bias:
-                    # We share the position biases between the layers - the first layer store them
-                    # layer_outputs = hidden-states, key-value-states (self-attention position bias), (self-attention weights),
-                    # (cross-attention position bias), (cross-attention weights)
-                    position_bias = layer_outputs[1]
-                    if self.is_decoder and encoder_hidden_states is not None:
-                        encoder_decoder_position_bias = layer_outputs[2]
+            # We share the position biases between the layers - the first layer store them
+            # layer_outputs = hidden-states, key-value-states (self-attention position bias), (self-attention weights),
+            # (cross-attention position bias), (cross-attention weights)
+            position_bias = layer_outputs[1]
+            if self.is_decoder and encoder_hidden_states is not None:
+                encoder_decoder_position_bias = layer_outputs[2]
         
         hidden_states = self.final_layer_norm(hidden_states)
         hidden_states = self.dropout(hidden_states)
@@ -574,7 +496,6 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
         return EncoderOutput(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
-            scores=pooler_scores_acc,
         )
 
 
@@ -607,21 +528,6 @@ class MyT5(nn.Module):
         # Initialize weights and apply final processing
         self.apply(self._init_weights)
     
-    def set_active_layers(self, num_active_layers, layer_ids=None) -> None:
-        if layer_ids is not None:
-            self.encoder.active_layer_indices = layer_ids
-            self.decoder.active_layer_indices = layer_ids
-        else:
-            indices = [i for i in range(num_active_layers)]
-            self.encoder.active_layer_indices = indices
-            self.decoder.active_layer_indices = indices
-
-    def get_num_active_layers(self) -> int:
-        # jean: technically, it would be len(self.encoder.active_layer_indices) + len(self.decoder.active_layer_indices)
-        # but this makes things a bit more complicated with the way stacking works right now
-        sum_of_indices = len(self.encoder.active_layer_indices)
-        return sum_of_indices if sum_of_indices > 0 else self.config.num_layers
-
     def generate(
         self,
         input_ids: Optional[torch.LongTensor] = None,
@@ -642,7 +548,8 @@ class MyT5(nn.Module):
         B, _ = input_ids.size()
         labels = torch.zeros(B, 1, dtype=torch.long, device=input_ids.device)
         encoder_outputs = None
-        for i in range(max_length):
+
+        for _ in range(max_length):
             out = self.forward(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -688,9 +595,6 @@ class MyT5(nn.Module):
 
         hidden_states = encoder_outputs.hidden_states
 
-        if self.config.enc_pooler.type != 'none':
-            attention_mask = encoder_outputs.attention_mask
-
         if labels is not None and decoder_input_ids is None:
             decoder_input_ids = self._shift_right(labels)
 
@@ -700,6 +604,8 @@ class MyT5(nn.Module):
             encoder_hidden_states=hidden_states,
             encoder_attention_mask=attention_mask,
         )
+
+        import pdb; pdb.set_trace()
 
         sequence_output = decoder_outputs[0]
         
@@ -712,10 +618,8 @@ class MyT5(nn.Module):
 
         return Seq2SeqLMOutput(
             loss=loss,
-            boundary_loss=None,
             logits=lm_logits,
             encoder_outputs=encoder_outputs,
-            extra_log={},
         )
 
     def _init_weights(self, module):
@@ -736,16 +640,6 @@ class MyT5(nn.Module):
             if hasattr(module.wi_1, "bias") and module.wi_1.bias is not None:
                 module.wi_1.bias.data.zero_()
             module.wo.weight.data.normal_(mean=0.0, std=factor * ((d_ff) ** -0.5))
-            if hasattr(module.wo, "bias") and module.wo.bias is not None:
-                module.wo.bias.data.zero_()
-        elif isinstance(module, BoundaryPredictor):
-            module.wi_0.weight.data.normal_(mean=0.0, std=factor * ((self.config.d_model) ** -0.5))
-            if hasattr(module.wi_0, "bias") and module.wi_0.bias is not None:
-                module.wi_0.bias.data.zero_()
-            module.wi_1.weight.data.normal_(mean=0.0, std=factor * ((self.config.d_model) ** -0.5))
-            if hasattr(module.wi_1, "bias") and module.wi_1.bias is not None:
-                module.wi_1.bias.data.zero_()
-            module.wo.weight.data.normal_(mean=0.0, std=factor * ((self.config.d_ff) ** -0.5))
             if hasattr(module.wo, "bias") and module.wo.bias is not None:
                 module.wo.bias.data.zero_()
         elif isinstance(module, T5Attention) or isinstance(module, T5AttentionFlash):

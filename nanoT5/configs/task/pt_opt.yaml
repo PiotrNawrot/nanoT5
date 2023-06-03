@@ -4,14 +4,28 @@ precision: 'bf16'
 
 model:
   name: 'google/t5-v1_1-base'
-  compile: true
+  compile: false
 
 optim:
   batch_size: 128
   total_steps: 65536
-  grad_acc: 1
+  grad_acc: 2
+
+# N-params: 247577856
+
+# Wyniki bez logowania:
+# * 1.03 with tf32
+# * 0.655 z bf16
+# * [TBC] 0.557 z flash attention
 
 logging:
   every_steps: 2
   grad_l2: false
   weights_l2: false
+
+eval:
+  every_steps: 500000 # Eval in the end only
+  steps: 500
+
+checkpoint:
+  every_steps: 500000 # Checkpoint in the end only
