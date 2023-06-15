@@ -18,6 +18,9 @@ def check_args_and_env(args):
 
     assert not (args.eval_only and args.predict_only)
 
+    if args.logging.grad_l2:
+        assert args.optim.grad_clip > 0, "A bit random, but we make this assumption"
+
     if args.predict_only:
         assert args.mode == 'ft'
 

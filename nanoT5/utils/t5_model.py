@@ -319,7 +319,7 @@ class T5LayerSelfAttention(nn.Module):
             position_bias=position_bias,
         )
         hidden_states = hidden_states + self.dropout(attention_output[0])
-        outputs = (hidden_states,) + attention_output[1:]  # add attentions if we output them
+        outputs = (hidden_states,) + attention_output[1:]
         return outputs
 
 
@@ -345,7 +345,7 @@ class T5LayerCrossAttention(nn.Module):
             position_bias=position_bias,
         )
         layer_output = hidden_states + self.dropout(attention_output[0])
-        outputs = (layer_output,) + attention_output[1:]  # add attentions if we output them
+        outputs = (layer_output,) + attention_output[1:]
         return outputs
 
 
@@ -360,14 +360,6 @@ class T5Block(nn.Module):
 
         self.layer.append(T5LayerFF(config))
     
-    def clamp(self, hidden_states):
-        # clamp inf values to enable fp16 training
-        if hidden_states.dtype == torch.float16 and torch.isinf(hidden_states).any():
-            clamp_value = torch.finfo(hidden_states.dtype).max - 1000
-            hidden_states = torch.clamp(hidden_states, min=-clamp_value, max=clamp_value)
-        
-        return hidden_states
-
     def forward(
         self,
         hidden_states,
@@ -384,11 +376,9 @@ class T5Block(nn.Module):
             position_bias=position_bias,
         )
         hidden_states = self_attention_outputs[0]
-        hidden_states = self.clamp(hidden_states)
         attention_outputs = self_attention_outputs[1:]  # Relative position weights
 
-        do_cross_attention = self.is_decoder and encoder_hidden_states is not None
-        if do_cross_attention:
+        if self.is_decoder and encoder_hidden_states is not None:
             cross_attention_outputs = self.layer[1](
                 hidden_states,
                 key_value_states=encoder_hidden_states,
@@ -396,14 +386,12 @@ class T5Block(nn.Module):
                 position_bias=encoder_decoder_position_bias,
             )
             hidden_states = cross_attention_outputs[0]
-            hidden_states = self.clamp(hidden_states)
 
             # Keep relative position weights
             attention_outputs = attention_outputs + cross_attention_outputs[1:]
 
         # Apply Feed Forward layer
         hidden_states = self.layer[-1](hidden_states)
-        hidden_states = self.clamp(hidden_states)
 
         outputs = (hidden_states,)
         outputs = outputs + attention_outputs
@@ -420,11 +408,9 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
         self.embed_tokens = embed_tokens
         self.is_decoder = config.is_decoder
 
-        self.block = nn.ModuleList()
-        for i in range(config.num_layers):
-            self.block.append(
-                T5Block(self.config, has_relative_attention_bias=bool(i == 0))
-            )
+        self.block = nn.ModuleList(
+            [T5Block(config, has_relative_attention_bias=bool(i == 0)) for i in range(config.num_layers)]
+        )
 
         self.final_layer_norm = T5LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
@@ -484,8 +470,6 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
             hidden_states = layer_outputs[0]
 
             # We share the position biases between the layers - the first layer store them
-            # layer_outputs = hidden-states, key-value-states (self-attention position bias), (self-attention weights),
-            # (cross-attention position bias), (cross-attention weights)
             position_bias = layer_outputs[1]
             if self.is_decoder and encoder_hidden_states is not None:
                 encoder_decoder_position_bias = layer_outputs[2]
@@ -506,9 +490,7 @@ class MyT5(nn.Module):
         assert not config.tie_word_embeddings
 
         self.config = config
-
         self.model_dim = config.d_model
-
         self.shared = nn.Embedding(config.vocab_size, config.d_model)
 
         encoder_config = copy.deepcopy(config)
@@ -518,14 +500,11 @@ class MyT5(nn.Module):
         decoder_config = copy.deepcopy(config)
         decoder_config.is_decoder = True
         decoder_config.num_layers = config.num_decoder_layers
-        if hasattr(decoder_config, "dec_d_ff"):
-            decoder_config.d_ff = config.dec_d_ff
         self.decoder = T5Stack(decoder_config, self.shared)
 
         self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
         self.generation_config = None
 
-        # Initialize weights and apply final processing
         self.apply(self._init_weights)
     
     def generate(
@@ -605,8 +584,6 @@ class MyT5(nn.Module):
             encoder_attention_mask=attention_mask,
         )
 
-        import pdb; pdb.set_trace()
-
         sequence_output = decoder_outputs[0]
         
         lm_logits = self.lm_head(sequence_output)
@@ -657,16 +634,11 @@ class MyT5(nn.Module):
         decoder_start_token_id = self.config.decoder_start_token_id
         pad_token_id = self.config.pad_token_id
 
-        assert decoder_start_token_id is not None, (
-            "self.model.config.decoder_start_token_id has to be defined. In T5 it is usually set to the pad_token_id."
-            " See T5 docs for more information"
-        )
-
+        assert decoder_start_token_id is not None and pad_token_id is not None
         shifted_input_ids = input_ids.new_zeros(input_ids.shape)
         shifted_input_ids[..., 1:] = input_ids[..., :-1].clone()
         shifted_input_ids[..., 0] = decoder_start_token_id
 
-        assert pad_token_id is not None, "self.model.config.pad_token_id has to be defined."
         # replace possible -100 values in labels by `pad_token_id`
         shifted_input_ids.masked_fill_(shifted_input_ids == -100, pad_token_id)
 
