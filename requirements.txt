@@ -13,4 +13,4 @@ evaluate
 nltk
 absl-py
 rouge_score
-flash-attn
+torch>=1.13.1,<=2.0.1

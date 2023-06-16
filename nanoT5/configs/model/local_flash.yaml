@@ -4,3 +4,4 @@ model:
   klass: local_t5
   add_config:
     flash: True
+    alibi: False
