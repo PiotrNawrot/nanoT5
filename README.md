@@ -48,12 +48,10 @@ git clone https://github.com/PiotrNawrot/nanoT5.git
 cd nanoT5
 conda create -n nanoT5 python=3.8
 conda activate nanoT5
-pip3 install torch torchvision torchaudio # installs torch 2.0.1, CUDA 11.7
-# I installed flash attention from the source, probably can be done just by putting it in requirements.txt
 pip install -r requirements.txt
 ```
 
-The following commands result in the following [pip freeze](assets/env_dump/pip_freeze.txt) as of 15.03.2023. 
+The following commands result in the following [pip freeze](assets/env_dump/pip_freeze.txt) as of 18.06.2023. 
 
 We also include our [lscpu](assets/env_dump/lscpu.txt) and [nvidia-smi](assets/env_dump/nvidia_smi.txt).
 

@@ -3,5 +3,4 @@
 model:
   klass: local_t5
   add_config:
-    flash: False
-    alibi: False
+    is_bf16: false

@@ -15,11 +15,6 @@ from transformers.models.t5.modeling_t5 import (
     T5DenseGatedActDense,
 )
 
-# Flash Attention
-# from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
-# from flash_attn.flash_attn_triton import flash_attn_func
-# from .flash_att import flash_attn_func
-
 
 @dataclass
 class EncoderOutput(ModelOutput):
@@ -32,44 +27,6 @@ class Seq2SeqLMOutput(ModelOutput):
     loss: torch.FloatTensor = None
     logits: torch.FloatTensor = None
     encoder_outputs: EncoderOutput = None
-
-
-def gen_slopes(n_heads, alibi_bias_max=8, device=None):
-    _n_heads = 2**math.ceil(math.log2(n_heads))
-    m = torch.arange(1, _n_heads + 1, dtype=torch.float32, device=device)
-    m = m.mul(alibi_bias_max / _n_heads)
-    slopes = (1. / torch.pow(2, m))
-
-    if _n_heads != n_heads:
-        # if n_heads is not a power of two,
-        # Huggingface and FasterTransformer calculate slopes normally,
-        # then return this strided concatenation of slopes
-        slopes = torch.concat([slopes[1::2], slopes[::2]])[:n_heads]
-
-    return slopes.view(1, n_heads, 1, 1)
-
-
-def build_alibi_bias(
-    n_heads,
-    seq_len,
-    full=False, # should equal to not causal
-    alibi_bias_max=8,
-    device='cuda',
-    dtype=torch.bfloat16,
-):
-    alibi_bias = torch.arange(1 - seq_len, 1, dtype=torch.int32,
-                              device=device).view(1, 1, 1, seq_len)
-    if full:
-        # generate 1 x Heads x SeqLen x SeqLen alibi bias mask
-        # otherwise the mask is 1 x Heads x 1 x SeqLen (which is broadcast to the appropriate size)
-        alibi_bias = alibi_bias - torch.arange(
-            1 - seq_len, 1, dtype=torch.int32, device=device).view(
-                1, 1, seq_len, 1)
-        alibi_bias = alibi_bias.abs().mul(-1)
-
-    slopes = gen_slopes(n_heads, alibi_bias_max, device=device)
-    alibi_bias = alibi_bias * slopes
-    return alibi_bias.to(dtype=dtype)
 
 
 class T5LayerFF(nn.Module):
@@ -236,179 +193,10 @@ class T5Attention(nn.Module):
         return (attn_output, position_bias)
 
 
-class T5AttentionAlibi(nn.Module):
-    def __init__(self, config: T5Config, has_positionals=False):
-        super().__init__()
-        self.is_decoder = config.is_decoder
-        self.d_model = config.d_model
-        self.key_value_proj_dim = config.d_kv
-        self.n_heads = config.num_heads
-        self.dropout = config.dropout_rate
-        self.inner_dim = self.n_heads * self.key_value_proj_dim
-        self.has_positionals = has_positionals
-
-        self.q = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.k = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.v = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
-        if self.has_positionals:
-            real_seq_length = 114 if self.is_decoder else 512
-            bias = build_alibi_bias(
-                n_heads=self.n_heads,
-                seq_len=real_seq_length,
-                full=not self.is_decoder,
-            )
-            self.register_buffer('bias', bias)
-
-    def forward(
-        self,
-        hidden_states,
-        mask=None,
-        key_value_states=None,
-        position_bias=None,
-    ):
-        """
-        Self-attention (if key_value_states is None) or attention over source sentence (provided by key_value_states).
-        """
-        # Input is (batch_size, seq_length, dim)
-        # Mask is (batch_size, key_length) (non-causal) or (batch_size, key_length, key_length)
-        batch_size, seq_length = hidden_states.shape[:2]
-        real_seq_length = seq_length
-        key_length = real_seq_length if key_value_states is None else key_value_states.shape[1]
-
-        def shape(states):
-            """projection"""
-            return states.view(batch_size, -1, self.n_heads, self.key_value_proj_dim).transpose(1, 2)
-
-        def unshape(states):
-            """reshape"""
-            return states.transpose(1, 2).contiguous().view(batch_size, -1, self.inner_dim)
-
-        query_states = self.q(hidden_states)
-        if key_value_states is None:
-            key_states, value_states = self.k(hidden_states), self.v(hidden_states)
-        else:
-            key_states, value_states = self.k(key_value_states), self.v(key_value_states)
-        query_states, key_states, value_states = shape(query_states), shape(key_states), shape(value_states)
-
-        scores = torch.matmul(
-            query_states, key_states.transpose(3, 2)
-        )  # equivalent of torch.einsum("bnqd,bnkd->bnqk", query_states, key_states), compatible with onnx op>9
-
-        if self.has_positionals:
-            position_bias = self.bias
-        else:
-            position_bias = torch.zeros(
-                (1, self.n_heads, real_seq_length, key_length), device=scores.device, dtype=scores.dtype
-            )
-
-        if mask is not None:
-            # Masking happens here, masked elements in the mask have the value of -inf
-            position_bias = position_bias + mask  # (batch_size, n_heads, seq_length, key_length)
-
-        scores += position_bias 
-        attn_weights = nn.functional.softmax(scores.float(), dim=-1).type_as(
-            scores
-        )  # (batch_size, n_heads, seq_length, key_length)
-        attn_weights = nn.functional.dropout(
-            attn_weights, p=self.dropout, training=self.training
-        )  # (batch_size, n_heads, seq_length, key_length)
-
-        attn_output = unshape(torch.matmul(attn_weights, value_states))  # (batch_size, seq_length, dim)
-        attn_output = self.o(attn_output)
-
-        return (attn_output, None)
-
-
-class T5AttentionFlash(nn.Module):
-    def __init__(self, config: T5Config, has_positionals=False):
-        super().__init__()
-        self.is_decoder = config.is_decoder
-        self.d_model = config.d_model
-        self.key_value_proj_dim = config.d_kv
-        self.n_heads = config.num_heads
-        self.dropout = config.dropout_rate
-        self.inner_dim = self.n_heads * self.key_value_proj_dim
-        self.has_positionals = has_positionals
-
-        self.q = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.k = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.v = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
-        if self.has_positionals:
-            real_seq_length = 114 if self.is_decoder else 512
-            bias = build_alibi_bias(
-                n_heads=self.n_heads,
-                seq_len=real_seq_length,
-                full=not self.is_decoder,
-            )
-            self.register_buffer('bias', bias)
-
-    def forward(
-        self,
-        hidden_states,
-        mask=None,
-        key_value_states=None,
-        position_bias=None,
-    ):
-        """
-        Self-attention (if key_value_states is None) or attention over source sentence (provided by key_value_states).
-        """
-        # Input is (batch_size, seq_length, dim)
-        # Mask is (batch_size, key_length) (non-causal) or (batch_size, key_length, key_length)
-        batch_size, seq_length = hidden_states.shape[:2]
-        real_seq_length = seq_length
-        key_length = real_seq_length if key_value_states is None else key_value_states.shape[1]
-
-        def shape(states):
-            """projection"""
-            return states.view(batch_size, -1, self.n_heads, self.key_value_proj_dim)
-
-        def unshape(states):
-            """reshape"""
-            return states.transpose(1, 2).contiguous().view(batch_size, -1, self.inner_dim)
-
-        query_states = self.q(hidden_states)
-        if key_value_states is None:
-            key_states, value_states = self.k(hidden_states), self.v(hidden_states)
-        else:
-            key_states, value_states = self.k(key_value_states), self.v(key_value_states)
-        query_states, key_states, value_states = shape(query_states), shape(key_states), shape(value_states)
-
-        if self.has_positionals:
-            position_bias = self.bias
-        else:
-            position_bias = torch.zeros(
-                (1, self.n_heads, real_seq_length, key_length), device=query_states.device, dtype=query_states.dtype
-            )
-        
-        out = flash_attn_func(
-            query_states,
-            key_states,
-            value_states,
-            position_bias,
-            self.is_decoder,
-            1.0,
-        )
-
-        out = out.view(out.size(0), out.size(1), -1)
-
-        # attn_output = unshape(torch.matmul(attn_weights, value_states))  # (batch_size, seq_length, dim)
-        attn_output = self.o(out)
-
-        return (attn_output, None)
-
-
 class T5LayerSelfAttention(nn.Module):
     def __init__(self, config, has_relative_attention_bias=False):
         super().__init__()
-        if config.flash:
-            self.SelfAttention = T5AttentionFlash(config, has_positionals=True)
-        elif config.alibi:
-            self.SelfAttention = T5AttentionAlibi(config, has_positionals=True)
-        else:
-            self.SelfAttention = T5Attention(config, has_relative_attention_bias=has_relative_attention_bias)
-
+        self.SelfAttention = T5Attention(config, has_relative_attention_bias=has_relative_attention_bias)
         self.layer_norm = T5LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
 
@@ -432,13 +220,7 @@ class T5LayerSelfAttention(nn.Module):
 class T5LayerCrossAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        if config.flash:
-            self.EncDecAttention = T5AttentionFlash(config, has_positionals=False)
-        elif config.alibi:
-            self.EncDecAttention = T5AttentionAlibi(config, has_positionals=False)
-        else:
-            self.EncDecAttention = T5Attention(config, has_relative_attention_bias=False)
-
+        self.EncDecAttention = T5Attention(config, has_relative_attention_bias=False)
         self.layer_norm = T5LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
 
@@ -480,11 +262,10 @@ class T5Block(nn.Module):
         encoder_hidden_states=None,
         encoder_attention_mask=None,
         encoder_decoder_position_bias=None,
-        orig_mask=None,
     ):
         self_attention_outputs = self.layer[0](
             hidden_states,
-            attention_mask=orig_mask if orig_mask is not None else attention_mask,
+            attention_mask=attention_mask,
             position_bias=position_bias,
         )
         hidden_states = self_attention_outputs[0]
@@ -580,7 +361,6 @@ class T5Stack(nn.Module, ModuleUtilsMixin):
                 encoder_hidden_states=encoder_hidden_states,
                 encoder_attention_mask=encoder_extended_attention_mask,
                 encoder_decoder_position_bias=encoder_decoder_position_bias,
-                orig_mask=attention_mask if self.config.flash else None,
             )
             hidden_states = layer_outputs[0]
 
@@ -726,7 +506,7 @@ class MyT5(nn.Module):
             module.wi_0.weight.data.normal_(mean=0.0, std=factor * ((d_model) ** -0.5))
             module.wi_1.weight.data.normal_(mean=0.0, std=factor * ((d_model) ** -0.5))
             module.wo.weight.data.normal_(mean=0.0, std=factor * ((d_ff) ** -0.5))
-        elif isinstance(module, T5Attention) or isinstance(module, T5AttentionFlash) or isinstance(module, T5AttentionAlibi):
+        elif isinstance(module, T5Attention):
             d_model = self.config.d_model
             key_value_proj_dim = self.config.d_kv
             n_heads = self.config.num_heads

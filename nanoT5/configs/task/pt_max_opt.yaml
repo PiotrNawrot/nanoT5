@@ -5,8 +5,6 @@ precision: 'bf16'
 model:
   name: 'google/t5-v1_1-base'
   compile: false
-  add_config:
-    is_bf16: true
 
 optim:
   batch_size: 144
@@ -22,9 +20,9 @@ optim:
 # * 0.627 with kv instead of k, v
 # * 0.602 with alibi
 # * 0.595 with alibi and full bf16
-# * [TBC] 0.572 z flash attention
 # * 0.625 z full bf16 local
 # * 0.54 z bs=128 grad_acc=1
+# * with flash attention?
 
 logging:
   every_steps: 100
