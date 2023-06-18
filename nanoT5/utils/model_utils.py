@@ -30,6 +30,7 @@ def get_model(args, config):
     elif args.model.random_init:
         model = klass(config)
     else:
+        assert klass == T5ForConditionalGeneration, 'To load HFs weights you need to use HF model'
         model = klass.from_pretrained(
             args.model.name,
             config=config,
