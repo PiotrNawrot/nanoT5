@@ -2,6 +2,9 @@
 
 mode: 'ft'
 
+model:
+  klass: hf_t5
+
 data:
   max_seq_len: 1024
   max_target_len: 128

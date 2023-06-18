@@ -174,7 +174,7 @@ Setting `model.random_init=true model.checkpoint_path=""` corresponds to a rando
 
 </div>
 
-A single Fine-tuning step takes ~0.175s, and total Fine-tunign for the T5-base model takes approximately 1 hour.
+A single Fine-tuning step takes ~0.175s, and full Fine-tuning takes ~1 hour.
 
 ## Extras:
 

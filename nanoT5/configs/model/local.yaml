@@ -1,6 +1,0 @@
-# @package _global_
-
-model:
-  klass: local_t5
-  add_config:
-    is_bf16: false
