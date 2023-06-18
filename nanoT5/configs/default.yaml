@@ -2,7 +2,7 @@ defaults:
   - _self_
   - model: hf
   - task: pt
-  - env: default
+  - local_env: default
 
 # Experiment args
 mode: 'pt'

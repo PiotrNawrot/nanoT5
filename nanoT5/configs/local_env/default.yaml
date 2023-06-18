@@ -1,0 +1,5 @@
+# @package _global_
+
+hydra:
+  run:
+    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
