@@ -57,8 +57,15 @@ def maybe_grad_clip_and_grad_calc(accelerator, model, args):
             max_norm=args.optim.grad_clip,
             norm_type=2,
         )
+    else:
+        grad_l2 = None
 
     if args.logging.grad_l2:
+        if grad_l2 is None:
+            grad_l2 = (
+                sum(p.grad.detach().data.norm(2).item() ** 2 for p in model.parameters()) ** 0.5
+            )
+
         return {'grad_l2': grad_l2}
     else:
         return {}
