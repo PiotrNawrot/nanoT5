@@ -1,0 +1,21 @@
+# @package _global_
+
+precision: 'bf16'
+
+model:
+  compile: true
+
+optim:
+  batch_size: 128
+  total_steps: 160000
+  grad_acc: 1
+
+logging:
+  grad_l2: false
+  weights_l2: false
+
+eval:
+  every_steps: 500000
+
+checkpoint:
+  every_steps: 26666

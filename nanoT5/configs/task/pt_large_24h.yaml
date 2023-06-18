@@ -1,0 +1,22 @@
+# @package _global_
+
+precision: 'bf16'
+
+model:
+  name: 'google/t5-v1_1-large'
+  compile: true
+
+optim:
+  batch_size: 120
+  total_steps: 55740
+  grad_acc: 3
+
+logging:
+  grad_l2: false
+  weights_l2: false
+
+eval:
+  every_steps: 500000
+
+checkpoint:
+  every_steps: 9290
