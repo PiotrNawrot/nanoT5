@@ -1,6 +1,5 @@
 defaults:
   - _self_
-  - model: hf
   - task: pt
   - local_env: default
 
