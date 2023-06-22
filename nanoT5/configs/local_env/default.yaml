@@ -2,4 +2,4 @@
 
 hydra:
   run:
-    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}-${logging.neptune_creds.tags}

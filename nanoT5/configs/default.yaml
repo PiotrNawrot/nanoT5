@@ -42,18 +42,18 @@ optim:
   final_cosine: 1e-5
 
 eval:
-  every_steps: 100000 # Don't eval
+  every_steps: 100000 # Eval once in the end
   steps: 500
 
 checkpoint:
-  every_steps: 30000
+  every_steps: 100000 # Save checkpoint once in the end
 
 logging:
   neptune: false
   neptune_creds:
     project:
     api_token:
-    tags:
+    tags: ''
   every_steps: 100
   grad_l2: true
   weights_l2: true
@@ -61,5 +61,3 @@ logging:
 hydra:
   job:
     chdir: True
-  run:
-    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -1,10 +1,5 @@
 # @package _global_
 
-precision: 'bf16'
-
-model:
-  compile: true
-
 optim:
   batch_size: 128
   total_steps: 160000
@@ -18,4 +13,4 @@ eval:
   every_steps: 500000
 
 checkpoint:
-  every_steps: 26666
+  every_steps: 26666 # 4h
