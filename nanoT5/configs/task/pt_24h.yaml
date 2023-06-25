@@ -1,13 +1,14 @@
 # @package _global_
 
 optim:
-  batch_size: 128
+  batch_size: 128 
   total_steps: 160000
   grad_acc: 1
+  base_lr: 1e-2
 
 logging:
-  grad_l2: false
-  weights_l2: false
+  grad_l2: true
+  weights_l2: true
 
 eval:
   every_steps: 500000

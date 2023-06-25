@@ -31,14 +31,14 @@ data:
 optim:
   name: adamwscale
   base_lr: 2e-2
-  batch_size: 144
+  batch_size: 128
   total_steps: 65536
   epochs: -1 # If it's > 0 it overwrites total_steps
   warmup_steps: 10000
   lr_scheduler: cosine
   weight_decay: 0.0
   grad_clip: 1.0
-  grad_acc: 2
+  grad_acc: 1
   final_cosine: 1e-5
 
 eval:
