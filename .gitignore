@@ -2,3 +2,4 @@ data
 env.yaml
 logs
 scripts
+.neptune
