@@ -4,7 +4,7 @@
 
 ![nanoT5](assets/nanoT5.png)
 
-[**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Efficiency statistics**](#efficiency-statistics) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Issues**](#issues)
+[**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Issues**](#issues)
 
 ## TLDR:
 
