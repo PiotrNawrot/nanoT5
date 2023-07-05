@@ -335,9 +335,9 @@ class AdamWScale(Optimizer):
                     bias_correction2 = 1.0 - beta2 ** state["step"]
                     step_size = step_size * math.sqrt(bias_correction2) / bias_correction1
 
-                # /Adapt Step from Adagrad
+                # /Adapt Step from Adafactor
                 step_size = step_size * max(1e-3, self._rms(p.data))
-                # /Adapt Step from Adagrad
+                # /Adapt Step from Adafactor
 
                 p.data.addcdiv_(exp_avg, denom, value=-step_size)
 

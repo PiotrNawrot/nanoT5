@@ -37,9 +37,6 @@ def maybe_logging(averager, args, model, optimizer, logger):
     if args.current_train_step % args.logging.every_steps == 0:
         stats = extra_stats(args, model, optimizer)
 
-        seconds_per_step = (time.time() - args.last_log) / args.logging.every_steps
-        stats['seconds_per_step'] = seconds_per_step
-
         averager.update(stats)
         averaged_stats = averager.average()
 
@@ -54,21 +51,21 @@ def maybe_logging(averager, args, model, optimizer, logger):
 
 
 def maybe_grad_clip_and_grad_calc(accelerator, model, args):
-    if args.logging.grad_l2:
-        grad_l2 = (
-            sum(p.grad.detach().data.norm(2).item() ** 2 for p in model.parameters()) ** 0.5
-        )
-    else:
-        grad_l2 = None
-
     if args.optim.grad_clip > 0:
-        accelerator.clip_grad_norm_(
+        grad_l2 = accelerator.clip_grad_norm_(
             parameters=model.parameters(),
             max_norm=args.optim.grad_clip,
             norm_type=2,
         )
+    else:
+        grad_l2 = None
 
-    if grad_l2 is not None:
+    if args.logging.grad_l2:
+        if grad_l2 is None:
+            grad_l2 = (
+                sum(p.grad.detach().data.norm(2).item() ** 2 for p in model.parameters()) ** 0.5
+            )
+
         return {'grad_l2': grad_l2}
     else:
         return {}
@@ -81,8 +78,8 @@ def extra_stats(args, model, optimizer):
         weights_l2 = sum(p.detach().norm(2).item() ** 2 for p in model.parameters()) ** 0.5
         stats['weights_l2'] = weights_l2
 
-    cur_lr = optimizer.param_groups[0]['lr']
-    stats['lr'] = cur_lr
+    stats['lr'] = optimizer.param_groups[0]['lr']
+    stats['seconds_per_step'] = (time.time() - args.last_log) / args.logging.every_steps
 
     return stats
 

@@ -1,0 +1,7 @@
+# @package _global_
+
+optim:
+  warmup_steps: 10000
+  batch_size: 256
+  total_steps: 79998
+  grad_acc: 2

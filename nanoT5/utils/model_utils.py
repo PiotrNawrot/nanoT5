@@ -15,24 +15,30 @@ from .copied_utils import (
     tokenize_function,
     DataCollatorForNI,
 )
+from .t5_model import MyT5
 
 
 def get_model(args, config):
+    klass = {
+        'hf_t5': T5ForConditionalGeneration,
+        'local_t5': MyT5,
+    }[args.model.klass]
+
     if args.model.checkpoint_path:
-        model = T5ForConditionalGeneration(
-            config,
-        )
+        model = klass(config)
         model.load_state_dict(torch.load(args.model.checkpoint_path))
     elif args.model.random_init:
-        model = T5ForConditionalGeneration(
-            config,
-        )
+        model = klass(config)
     else:
-        model = T5ForConditionalGeneration.from_pretrained(
+        assert klass == T5ForConditionalGeneration, 'To load HFs weights you need to use HF model'
+        model = klass.from_pretrained(
             args.model.name,
             config=config,
         )
 
+    with open_dict(args):
+        args.n_all_param = sum([p.nelement() for p in model.parameters()])
+    
     return model
 
 
@@ -40,7 +46,17 @@ def get_config(args):
     config = AutoConfig.from_pretrained(
         args.model.name,
     )
-    config.dropout_rate = args.model.dropout
+
+    if hasattr(args.model, 'overwrite'):
+        for k, v in args.model.overwrite.items():
+            assert hasattr(config, k), f'config does not have attribute {k}'
+            setattr(config, k, v)
+
+    if hasattr(args.model, 'add_config'):
+        for k, v in args.model.add_config.items():
+            assert not hasattr(config, k), f'config already has attribute {k}'
+            setattr(config, k, v)
+
     return config
 
 
@@ -171,9 +187,6 @@ def get_dataloaders(tokenizer, config, args):
     for split in ['train', 'test']:
         batch_size = args.optim.batch_size // args.optim.grad_acc
 
-        if split in ['test']:
-            batch_size *= 2
-
         shuffle = (split == 'train') and not is_iterable
 
         if args.mode == 'ft' and split == 'train':
@@ -201,8 +214,7 @@ def get_dataloaders(tokenizer, config, args):
             assert not is_iterable
             args.optim.total_steps = (len(dataloaders['train']) // args.optim.grad_acc) * args.optim.epochs 
 
-        # We increase eval BS by 2, so decrease number of eval steps
-        args.eval.corrected_steps = args.eval.steps / 2
+        args.eval.corrected_steps = args.eval.steps
 
     return dataloaders['train'], dataloaders['test']
 

@@ -1,6 +1,10 @@
 # @package _global_
 
 mode: 'ft'
+precision: 'no'
+
+model:
+  klass: hf_t5
 
 data:
   max_seq_len: 1024
