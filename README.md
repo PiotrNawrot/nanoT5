@@ -112,6 +112,22 @@ The summary of the optimization process is printed every 100 steps in the follow
 
 [TODO: Include the default model weights] Finally, you can downlaod the weights after our pre-training directly from [HuggingFace Hub](https://huggingface.co/pnawrot/nanoT5-base) and fine-tune it directly on SNI using nanoT5.
 
+### Efficiency statistics:
+
+Below we include the efficiency statistics for our pre-training experiments. We report the time it takes to pre-train the model for 1 pre-training step and the total pre-training time according to the [default config](nanoT5/configs/default.yaml). Please note that we need to increase the **optim.grad_acc steps** to fit the model in precision different from BF16.
+
+<div align="center">
+
+| **Mixed Precision Format** | **Torch 2.0 compile** | **Grad Acc Steps** | **Pre-training (1 step)** | **Total Pre-training time** |
+| :----: | :---: | :---: | :---: | :---: |
+| FP32 | No | 2 | ~4.10s | ~74.6h |
+| TF32 | No | 2 | ~1.39s | ~25.3h |
+| BF16 | No | 2 | ~1.30s | ~23.7h |
+| TF32 | Yes | 2 | ~0.95s | ~17.3h |
+| BF16 | Yes | 1 | ~0.56s  | ~10.2h |
+
+</div>
+
 ## Fine-tuning:
 
 To fine-tune our model, we use the popular meta-dataset called **Super Natural-Instructions (SNI)**, which aggregates datasets for many tasks. This meta-dataset was used to fine-tune many of the recent LLMs, e.g. [FlanT5](https://arxiv.org/pdf/2210.11416.pdf), [BLOOM](https://arxiv.org/pdf/2211.05100.pdf), and [Tk-Instruct](https://arxiv.org/pdf/2204.07705.pdf). While FlanT5 and BLOOM use other corpora in addition to SNI, Tk-Instruct's pipeline consists of starting from the pre-trained T5 model and fine-tuning it solely on SNI. 
@@ -132,14 +148,15 @@ We strictly follow the fine-tuning [config](nanoT5/configs/task/ft.yaml) of Tk-I
 python -m nanoT5.main task=ft \
     model.name={google/t5-v1_1-base,google/t5-base-lm-adapt} \
     model.random_init={true,false} \
+    model.klass={local_t5,hf_t5} \
     model.checkpoint_path={"","/path/to/pytorch_model.bin"}
 ```
 
-Setting `model.random_init=false model.checkpoint_path=""` corresponds to downloading pre-trained weights from HuggingFace Hub.
+Setting `model.random_init=false model.klass=hf_t5 model.checkpoint_path=""` corresponds to downloading pre-trained weights from HuggingFace Hub.
 
-Setting `model.random_init=false model.checkpoint_path="/path/to/pytorch_model.bin"` corresponds to using the weights [**pre-trained**](#pre-training) with nanoT5.
+Setting `model.random_init=false model.klass=local_t5 model.checkpoint_path="/path/to/pytorch_model.bin"` corresponds to using the weights [**pre-trained**](#pre-training) with nanoT5.
 
-Setting `model.random_init=true model.checkpoint_path=""` corresponds to a random initialisation.
+Setting `model.random_init=true model.klass=local_t5 model.checkpoint_path=""` corresponds to a random initialisation.
 
 ### Rouge-L on the held-out test-set across different pre-training budgets:
 
@@ -151,19 +168,6 @@ In the figure below, we compare the performance of our model trained within diff
 
 ![ft_loss](assets/ft_loss.png)
 
-## Efficiency statistics:
-
-<div align="center">
-
-| **Mixed Precision Format** | **Torch 2.0 compile** | **Pre-training (1 step)** | **Total Pre-training time** |
-| :----: | :---: | :---: | :---: |
-| FP32 | No | ~4.56s | ~83.0h |
-| TF32 | No | ~1.51s | ~27.5h |
-| BF16 | No | ~1.44s | ~26.6h |
-| TF32 | Yes | ~1.03s | ~18.8h |
-| BF16 | Yes | ~0.63s  | ~11.5h |
-
-</div>
 
 A single Fine-tuning step takes ~0.175s, and full Fine-tuning takes ~1 hour.
 
