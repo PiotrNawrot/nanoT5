@@ -150,7 +150,7 @@ python -m nanoT5.main task=ft \
     model.checkpoint_path={"","/path/to/pytorch_model.bin"}
 ```
 
-`model.klass={local_t5,hf_t5}` differentiates between the simplified, and a bit faster, implementation of the T5 model in this repository and the original HuggingFace implementation. The former doesn't support loading weights from HuggingFace Hub, so you need to specify the path to the checkpoint. The latter supports both loading weights from HuggingFace Hub and from a local path.
+`model.klass={local_t5,hf_t5}` differentiates between the simplified, and a bit faster, implementation of the T5 model in this repository and the original HuggingFace implementation. The former doesn't support loading weights from HuggingFace Hub, so you need to specify the path to the checkpoint. The latter supports both loading weights from HuggingFace Hub and from a local path. Both models share the same underlying architecture, and their checkpoints have the same format. During pre-training, we use the simplified implementation, while during fine-tuning, we stick to the HuggingFace implementation as it is more flexible and fast enough.
 
 Setting `model.random_init=false model.klass=hf_t5 model.checkpoint_path=""` corresponds to downloading pre-trained weights from HuggingFace Hub.
 

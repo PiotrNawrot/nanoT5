@@ -187,9 +187,6 @@ def get_dataloaders(tokenizer, config, args):
     for split in ['train', 'test']:
         batch_size = args.optim.batch_size // args.optim.grad_acc
 
-        # if split in ['test']:
-        #     batch_size *= 2
-
         shuffle = (split == 'train') and not is_iterable
 
         if args.mode == 'ft' and split == 'train':
@@ -217,7 +214,6 @@ def get_dataloaders(tokenizer, config, args):
             assert not is_iterable
             args.optim.total_steps = (len(dataloaders['train']) // args.optim.grad_acc) * args.optim.epochs 
 
-        # We increase eval BS by 2, so decrease number of eval steps
         args.eval.corrected_steps = args.eval.steps
 
     return dataloaders['train'], dataloaders['test']
