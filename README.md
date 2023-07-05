@@ -41,7 +41,7 @@ In this project, we expose (for research purposes) and optimise everything in th
 
 ## Setup
 
-### Environment:
+### Environment & Hardware:
 
 ```
 git clone https://github.com/PiotrNawrot/nanoT5.git
@@ -50,8 +50,6 @@ conda create -n nanoT5 python=3.8
 conda activate nanoT5
 pip install -r requirements.txt
 ```
-
-### Our hardware:
 
 The following commands result in the following [pip freeze](assets/env_dump/pip_freeze.txt) as of 18.06.2023. 
 
@@ -152,6 +150,8 @@ python -m nanoT5.main task=ft \
     model.checkpoint_path={"","/path/to/pytorch_model.bin"}
 ```
 
+`model.klass={local_t5,hf_t5}` differentiates between the simplified, and a bit faster, implementation of the T5 model in this repository and the original HuggingFace implementation. The former doesn't support loading weights from HuggingFace Hub, so you need to specify the path to the checkpoint. The latter supports both loading weights from HuggingFace Hub and from a local path.
+
 Setting `model.random_init=false model.klass=hf_t5 model.checkpoint_path=""` corresponds to downloading pre-trained weights from HuggingFace Hub.
 
 Setting `model.random_init=false model.klass=local_t5 model.checkpoint_path="/path/to/pytorch_model.bin"` corresponds to using the weights [**pre-trained**](#pre-training) with nanoT5.
@@ -160,14 +160,13 @@ Setting `model.random_init=true model.klass=local_t5 model.checkpoint_path=""` c
 
 ### Rouge-L on the held-out test-set across different pre-training budgets:
 
-In the figure below, we compare the performance of our model trained within different time budgets (4, 8, 12, 16, 20, 24 hours) with the original T5-base-v1.1 model weights available through Huggingface Hub and its version adapted for Language Modelling (*google/t5-base-lm-adapt*). We observe that model in our repository for 16 hours on a single GPU is only 0.2 RougeL worse on average than the original T5-base-v1.1 model, despite being pre-trained on 150x less data (According to the [T5 paper](https://arxiv.org/pdf/1910.10683.pdf), they pre-train their models for a millions steps with a batch size 2048. Our 16 hours config does 53332 steps with a batch size 256.). Configs to reproduce these experiments are available [here](nanoT5/configs/task/).
+In the figure below, we compare the performance of our model trained within different time budgets ([4](nanoT5/configs/task/pt_4h.yaml), [8](nanoT5/configs/task/pt_8h.yaml), [12](nanoT5/configs/task/pt_12h.yaml), [16](nanoT5/configs/task/pt_16h.yaml), [20](nanoT5/configs/task/pt_20h.yaml), [24](nanoT5/configs/task/pt_24h.yaml) hours) with the original T5-base-v1.1 model weights available through Huggingface Hub and its version adapted for Language Modelling (*google/t5-base-lm-adapt*). We observe that model in our repository for 16 hours on a single GPU is only 0.2 RougeL worse on average than the original T5-base-v1.1 model, despite being pre-trained on 150x less data (According to the [T5 paper](https://arxiv.org/pdf/1910.10683.pdf), they pre-train their models for a millions steps with a batch size 2048. Our 16 hours config does 53332 steps with a batch size 256.). Configs to reproduce these experiments are available [here](nanoT5/configs/task/).
 
 ![ft_rougeL](assets/downstream.png)
 
 ### Fine-tuning loss curves:
 
 ![ft_loss](assets/ft_loss.png)
-
 
 A single Fine-tuning step takes ~0.175s, and full Fine-tuning takes ~1 hour.
 
