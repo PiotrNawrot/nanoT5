@@ -168,13 +168,13 @@ A single Fine-tuning step takes ~0.18s, and full Fine-tuning takes ~1 hour.
 
 ### Things we tried and didn't work out:
 
-- **Different optimizers:** We tried the most recent optimizers like [Lion](https://arxiv.org/abs/2302.06675), [Sophia](https://github.com/Liuhong99/Sophia), however none of them worked better than AdamW with RMS scaling.
-- **Positional embeddings:** We tried to replace T5's learned relative positional embeddings with [ALiBi](https://arxiv.org/pdf/2108.12409.pdf). Possible benefits include a reduction of parameters and faster training & inference. Furthermore, if ALiBi would work we could add [Flash Attention](https://github.com/HazyResearch/flash-attention) which supports only non-parametric bias. However, with ALiBi the training was less stable and it had worse pre-training loss.
-- **FP16 precision:** All experiments with FP16 precision diverged across runs with different seeds
+- **Different optimizers:** We tried the most recent optimizers like [Lion](https://arxiv.org/abs/2302.06675), [Sophia](https://github.com/Liuhong99/Sophia), however, none of them worked better than AdamW with RMS scaling.
+- **Positional embeddings:** We tried to replace T5's learned relative positional embeddings with [ALiBi](https://arxiv.org/pdf/2108.12409.pdf). Possible benefits include a reduction of parameters and faster training & inference. Furthermore, if ALiBi worked we could add [Flash Attention](https://github.com/HazyResearch/flash-attention), which currently supports only non-parametric bias (T5 bias is trainable). However, with ALiBi the training was less stable and it had worse pre-training loss.
+- **FP16 precision:** All experiments with FP16 precision diverged across different seeds
 
 ## Conclusions:
 
-We show that it is possible to successfully pre-train a "Large Language Model" (T5) under a limited budget (1xA100 GPU, ~TODO hours) in PyTorch. We make our codebase, configs and training logs publicly available to enhance the accessibility of NLP research. We are keen to hear your suggestions to improve the codebase further.
+We show that it is possible to successfully pre-train a "Large Language Model" (T5) under a limited budget (1xA100 GPU, < 24 hours) in PyTorch. We make our codebase, configs and training logs publicly available to enhance the accessibility of NLP research. We are keen to hear your suggestions to improve the codebase further.
 
 ### Acknowledgements:
 
