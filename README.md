@@ -4,7 +4,7 @@
 
 ![nanoT5](assets/nanoT5.png)
 
-[**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Issues**](#issues)
+[**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Cite**](#cite) | [**Issues**](#issues)
 
 ## TLDR:
 
@@ -188,6 +188,21 @@ Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
 - [Karpathy's nanoGPT](https://github.com/karpathy/nanoGPT)
 - [Instruct-GPT codebase (Super-Natural Instructions)](https://github.com/yizhongw/Tk-Instruct)
 - [Blog about pre-training Dutch T5 in HuggingFace](https://huggingface.co/spaces/yhavinga/pre-training-dutch-t5-models)
+
+## Cite
+```
+@software{piotr_nawrot_2023_7757548,
+  author       = {Piotr Nawrot},
+  title        = {{nanoT5: Fast \& Simple repository for pre-training 
+                   and fine-tuning T5-style models}},
+  month        = mar,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.7757548},
+  url          = {https://doi.org/10.5281/zenodo.7757548}
+}
+```
 
 ## Issues:
 
