@@ -191,16 +191,13 @@ Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
 
 ## Cite
 ```
-@software{piotr_nawrot_2023_7757548,
-  author       = {Piotr Nawrot},
-  title        = {{nanoT5: Fast \& Simple repository for pre-training 
-                   and fine-tuning T5-style models}},
-  month        = mar,
-  year         = 2023,
-  publisher    = {Zenodo},
-  version      = {v1.0.0},
-  doi          = {10.5281/zenodo.7757548},
-  url          = {https://doi.org/10.5281/zenodo.7757548}
+@misc{nawrot2023nanot5,
+      title={nanoT5: A PyTorch Framework for Pre-training and Fine-tuning T5-style Models with Limited Resources}, 
+      author={Piotr Nawrot},
+      year={2023},
+      eprint={2309.02373},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
 
