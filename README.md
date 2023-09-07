@@ -1,10 +1,8 @@
-[![DOI](https://zenodo.org/badge/611282680.svg)](https://zenodo.org/badge/latestdoi/611282680)
-
 # nanoT5 (Encoder-Decoder / Pre-training + Fine-Tuning)
 
 ![nanoT5](assets/nanoT5.png)
 
-[**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Cite**](#cite) | [**Issues**](#issues)
+[[Paper](https://arxiv.org/abs/2309.02373)] | [**TLDR**](#tldr) | [**Motivation**](#motivation) | [**Setup**](#setup) | [**Pre-training**](#pre-training) | [**Fine-tuning**](#fine-tuning) | [**Extras**](#Extras) | [**Conclusions**](#conclusions) | [**References**](#references) | [**Cite**](#cite) | [**Issues**](#issues)
 
 ## TLDR:
 
@@ -190,14 +188,28 @@ Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
 - [Blog about pre-training Dutch T5 in HuggingFace](https://huggingface.co/spaces/yhavinga/pre-training-dutch-t5-models)
 
 ## Cite
+
+If you found the repository useful consider citing the paper about this work.
+
 ```
-@misc{nawrot2023nanot5,
-      title={nanoT5: A PyTorch Framework for Pre-training and Fine-tuning T5-style Models with Limited Resources}, 
-      author={Piotr Nawrot},
-      year={2023},
-      eprint={2309.02373},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@article{Nawrot2023nanoT5AP,
+  title={nanoT5: A PyTorch Framework for Pre-training and Fine-tuning T5-style Models with Limited Resources},
+  author={Piotr Nawrot},
+  journal={ArXiv},
+  year={2023},
+  volume={abs/2309.02373},
+}
+```
+
+Below you can also find an excellent work which uses nanoT5 for their experiments.
+
+```
+@article{Kaddour2023NoTN,
+  title={No Train No Gain: Revisiting Efficient Training Algorithms For Transformer-based Language Models},
+  author={Jean Kaddour and Oscar Key and Piotr Nawrot and Pasquale Minervini and Matt J. Kusner},
+  journal={ArXiv},
+  year={2023},
+  volume={abs/2307.06440},
 }
 ```
 
