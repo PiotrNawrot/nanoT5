@@ -8,9 +8,9 @@
 
 This repository comprises the code to reproduce the pre-training of a "Large Language Model" (T5) under a limited budget (1xA100 GPU, < 24 hours) in PyTorch. We start from the randomly initialised T5-base-v1.1 (248M parameters) model, and we pre-train it on the English subset of the C4 dataset and then fine-tune it on Super-Natural Instructions (SNI) benchmark. 
 
-**In ~16 hours on a single GPU, we achieve 40.7 RougeL on the SNI test set, compared to 40.9 RougeL of the original model weights available on HuggingFace Hub and pretrained on 150x more data through "a combination of model and data parallelism [...] on slices of Cloud TPU Pods", each with 1024 TPUs.**
+**In ~16 hours on a single GPU, we achieve 40.7 RougeL on the SNI test set, compared to 40.9 RougeL of the original model weights available on Hugging Face Hub and pretrained on 150x more data through "a combination of model and data parallelism [...] on slices of Cloud TPU Pods", each with 1024 TPUs.**
 
-Our core contribution is not the T5 model itself, which follows the HuggingFace implementation. Instead, we optimise everything else in the training pipeline to offer you a user-friendly starting template for your NLP application/research. Most importantly, we show that it is possible to pre-train the T5 model to the top performance under a limited budget in PyTorch.
+Our core contribution is not the T5 model itself, which follows the Hugging Face implementation. Instead, we optimise everything else in the training pipeline to offer you a user-friendly starting template for your NLP application/research. Most importantly, we show that it is possible to pre-train the T5 model to the top performance under a limited budget in PyTorch.
 
 ## Motivation
 
@@ -27,14 +27,14 @@ With [nanoT5](https://github.com/PiotrNawrot/nanoT5), we want to fill a gap (Com
 - You have an in-house dataset that you think is more appropriate than the original pre-training dataset (C4) for your downstream task;
 - You want to experiment with continued pre-training or want to build on the T5 pre-training objective.
 
-**If you don't need to pre-train the T5 model, you'd be better off downloading the weights from HuggingFace Hub. Our checkpoints are worse because we work under limited compute.**
+**If you don't need to pre-train the T5 model, you'd be better off downloading the weights from Hugging Face Hub. Our checkpoints are worse because we work under limited compute.**
 
 ## 
 
 In this project, we expose (for research purposes) and optimise everything in the training pipeline of T5, except from the model implementation. We include the simplified implementation of T5 model (which is great for teaching & learning purposes), however, we do not optimize it with the latest techniques like [tensor or pipeline parallelism](https://arxiv.org/pdf/2104.04473.pdf), because it makes the code much more complex and is not needed at a small scale. **Most importantly, we base our code on PyTorch, since access to TPUs is limited.** Key features:
 - **Dataset:** Downloading and preprocessing of the C4 dataset happens in parallel with the training of the model. The C4 dataset is > 300GB, so it takes a couple of hours to download it and even longer to preprocess it. This codebase does it on the fly without any detrimental effect on the training time and performance (we haven't observed it, although it might happen with an old CPU (< 8 core) or a slow internet connection). **As a result, you can initiate pre-training of your own T5 model within minutes.**
 - **Model Optimizer / LR Scheduler:** The original T5 uses a memory-efficient Adafactor optimizer. [A study on pre-training T5](https://huggingface.co/spaces/yhavinga/pre-training-dutch-t5-models), on the other hand, reports that training does not converge with AdamW which we find strange given that AdamW relies on theoretically better approximations than Adafactor. We analysed the source of this discrepancy with several ablations. Although there are many subtle differences between Adafactor and AdamW, what ensures the Adafactor convergence is [matrix-wise LR scaling by its root mean square (RMS)](https://github.com/huggingface/transformers/blob/main/src/transformers/optimization.py#L595). We augmented the AdamW implementation by RMS scaling and observed that it becomes **more stable during pre-training, achieves better validation loss, and is faster**.
-- **Exposure and simplicity:** We try to balance the implementation of the training pipeline by keeping it customisable while retaining a sufficient level of abstraction. We use the [HuggingFace Accelerator](https://huggingface.co/docs/accelerate/index) to implement operations like Checkpoint Saving, Gradient Accumulation, Gradient Clipping, and moving tensors to the correct devices. We use [neptune.ai](https://neptune.ai) for experiment tracking and [hydra](https://hydra.cc/docs/intro/) for hyperparameters. Additionally, we expose a [simplified implementation](nanoT5/utils/t5_model.py) of the T5 model, training loop, data preprocessing, etc.
+- **Exposure and simplicity:** We try to balance the implementation of the training pipeline by keeping it customisable while retaining a sufficient level of abstraction. We use the [Hugging Face Accelerator](https://huggingface.co/docs/accelerate/index) to implement operations like Checkpoint Saving, Gradient Accumulation, Gradient Clipping, and moving tensors to the correct devices. We use [neptune.ai](https://neptune.ai) for experiment tracking and [hydra](https://hydra.cc/docs/intro/) for hyperparameters. Additionally, we expose a [simplified implementation](nanoT5/utils/t5_model.py) of the T5 model, training loop, data preprocessing, etc.
 - **Efficiency:** We use mixed-precision training (TF32 & BF16), PyTorch 2.0 compile, and utilise all optimisations listed in established optimisation tutorials [#1](https://huggingface.co/docs/transformers/perf_train_gpu_one) [#2](https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html).
 
 ## Setup
@@ -145,7 +145,7 @@ python -m nanoT5.main task=ft \
     model.checkpoint_path={"","/path/to/pytorch_model.bin"}
 ```
 
-Setting `model.random_init=false model.checkpoint_path=""` corresponds to downloading pre-trained weights from HuggingFace Hub.
+Setting `model.random_init=false model.checkpoint_path=""` corresponds to downloading pre-trained weights from Hugging Face Hub.
 
 Setting `model.random_init=false model.checkpoint_path="/path/to/pytorch_model.bin"` corresponds to using the weights [**pre-trained**](#pre-training) with nanoT5.
 
@@ -153,11 +153,11 @@ Setting `model.random_init=true model.checkpoint_path=""` corresponds to a rando
 
 ### Rouge-L on the held-out test-set across different pre-training budgets:
 
-In the figure below, we compare the performance of the model trained in this repository under different time budgets ([4](nanoT5/configs/task/pt_4h.yaml), [8](nanoT5/configs/task/pt_8h.yaml), [12](nanoT5/configs/task/pt_12h.yaml), [16](nanoT5/configs/task/pt_16h.yaml), [20](nanoT5/configs/task/pt_20h.yaml), [24](nanoT5/configs/task/pt_24h.yaml) hours) with the original T5-base-v1.1 model weights available through Huggingface Hub and its version adapted for Language Modelling (*google/t5-base-lm-adapt*). We observe that model trained in our repository for 16 hours on a single GPU is only 0.2 RougeL worse on average than the original T5-base-v1.1 model, despite being pre-trained on 150x less data (According to the [T5 paper](https://arxiv.org/pdf/1910.10683.pdf), they pre-train their models for one million steps with a batch size 2048. Our 16 hours config does 53332 steps with a batch size 256). Checkpoint explicitly adapted for Language Modelling (*google/t5-base-lm-adapt*) performs better than the original T5-base-v1.1 model and our model, however, this goes beyond the scope of this repository. 
+In the figure below, we compare the performance of the model trained in this repository under different time budgets ([4](nanoT5/configs/task/pt_4h.yaml), [8](nanoT5/configs/task/pt_8h.yaml), [12](nanoT5/configs/task/pt_12h.yaml), [16](nanoT5/configs/task/pt_16h.yaml), [20](nanoT5/configs/task/pt_20h.yaml), [24](nanoT5/configs/task/pt_24h.yaml) hours) with the original T5-base-v1.1 model weights available through Hugging Face Hub and its version adapted for Language Modelling (*google/t5-base-lm-adapt*). We observe that model trained in our repository for 16 hours on a single GPU is only 0.2 RougeL worse on average than the original T5-base-v1.1 model, despite being pre-trained on 150x less data (According to the [T5 paper](https://arxiv.org/pdf/1910.10683.pdf), they pre-train their models for one million steps with a batch size 2048. Our 16 hours config does 53332 steps with a batch size 256). Checkpoint explicitly adapted for Language Modelling (*google/t5-base-lm-adapt*) performs better than the original T5-base-v1.1 model and our model, however, this goes beyond the scope of this repository. 
 
 ![ft_rougeL](assets/downstream.png)
 
-We share the model's weights after pre-training for 24 hours on [HuggingFace Hub](https://huggingface.co/pnawrot/nanoT5-base), which you can download and fine-tune on SNI using nanoT5.
+We share the model's weights after pre-training for 24 hours on [Hugging Face Hub](https://huggingface.co/pnawrot/nanoT5-base), which you can download and fine-tune on SNI using nanoT5.
 We also share the [fine-tuning loss curves](assets/ft_loss.png).
 
 A single Fine-tuning step takes ~0.18s, and full Fine-tuning takes ~1 hour.
@@ -182,10 +182,10 @@ Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
 - [T5 paper](https://arxiv.org/pdf/1910.10683.pdf)
 - [T5 v1.1 paper](https://arxiv.org/pdf/2002.05202.pdf)
 - [Super-Natural Instructions paper](https://arxiv.org/pdf/2204.07705.pdf)
-- [HuggingFace Flax Script](https://github.com/huggingface/transformers/blob/main/examples/flax/language-modeling/run_t5_mlm_flax.py)
+- [Hugging Face Flax Script](https://github.com/huggingface/transformers/blob/main/examples/flax/language-modeling/run_t5_mlm_flax.py)
 - [Karpathy's nanoGPT](https://github.com/karpathy/nanoGPT)
 - [Instruct-GPT codebase (Super-Natural Instructions)](https://github.com/yizhongw/Tk-Instruct)
-- [Blog about pre-training Dutch T5 in HuggingFace](https://huggingface.co/spaces/yhavinga/pre-training-dutch-t5-models)
+- [Blog about pre-training Dutch T5 in Hugging Face](https://huggingface.co/spaces/yhavinga/pre-training-dutch-t5-models)
 
 ## Cite
 
