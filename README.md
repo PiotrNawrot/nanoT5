@@ -192,12 +192,15 @@ Thanks to [Edoardo Maria Ponti](https://ducdauge.github.io) for his feedback!
 If you found the repository useful consider citing the paper about this work.
 
 ```
-@article{Nawrot2023nanoT5AP,
-  title={nanoT5: A PyTorch Framework for Pre-training and Fine-tuning T5-style Models with Limited Resources},
-  author={Piotr Nawrot},
-  journal={ArXiv},
-  year={2023},
-  volume={abs/2309.02373},
+@inproceedings{nawrot-2023-nanot5,
+	title        = {nano{T}5: Fast {\&} Simple Pre-training and Fine-tuning of {T}5 Models with Limited Resources},
+	author       = {Nawrot, Piotr},
+	year         = 2023,
+	month        = dec,
+	booktitle    = {Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)},
+	publisher    = {Association for Computational Linguistics},
+	doi          = {10.18653/v1/2023.nlposs-1.11},
+	url          = {https://aclanthology.org/2023.nlposs-1.11}
 }
 ```
 
